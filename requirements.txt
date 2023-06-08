@@ -1,0 +1,3 @@
+aiohttp>=3.8.1
+requests>=2.27.1
+ujson>=5.7.0
