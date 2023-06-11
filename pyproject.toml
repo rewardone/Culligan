@@ -1,0 +1,29 @@
+[build-system]
+requires = [
+  "setuptools>=61.0",
+  "wheel"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "culligan"
+version = "1.0.0"
+authors = [
+  { name="Reward One", email="rewardone@gmail.com" },
+]
+description = "Python API for Culligan products"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dynamic = ["dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[project.urls]
+"Homepage" = "https://github.com/rewardone/culligan"
+"Bug Tracker" = "https://github.com/rewardone/culligan/issues"

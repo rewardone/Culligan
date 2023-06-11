@@ -12,11 +12,18 @@ from aiohttp    import ClientSession             # async http
 from requests   import post, request, Response   # http request library
 from datetime   import datetime, timedelta       # datetime operations
 from typing     import Dict, List, Optional      # object types
+from ayla_iot_unofficial import AylaApi
 
 try:
     from ujson   import loads
 except ImportError:
     from json    import loads
+
+# Defined constants
+from .const import (
+    CULLIGAN_APP_ID,
+    CULLIGAN_IOT_URL
+)
 
 # Custom error handling 
 from .exc import (
@@ -29,7 +36,7 @@ from .exc import (
 
 _session = None
 
-def new_culligan_api(username: str, password: str, app_id: str = "OAhRjZjfBSwKLV8MTCjscAdoyJKzjxQW", websession: Optional[ClientSession] = None):
+def new_culligan_api(username: str, password: str, app_id: str = CULLIGAN_APP_ID, websession: Optional[ClientSession] = None):
     """Get an CulliganApi object. Username is an email address."""
     return CulliganApi(username, password, app_id, websession=websession)
 
@@ -52,10 +59,14 @@ class CulliganApi:
         self._ayla_access_token     = None          # type: Optional[str]
         self._ayla_refresh_token    = None          # type: Optional[str]
         self._ayla_expiration       = None          # type: Optional[datetime]
+        self._ayla_expiration_raw   = None          # type: Optional[int]
         self._is_authed             = False         # type: bool
         self._app_id                = app_id
         self.websession             = websession
-        self.v1_url                 = "https://uniapi.culliganiot.com/api/v1"
+        self.v1_url                 = CULLIGAN_IOT_URL
+
+        self.sign_in()
+        self.Ayla                   = self.get_ayla_api()
 
     async def ensure_session(self) -> ClientSession:
         """Ensure that we have an aiohttp ClientSession"""
@@ -96,6 +107,7 @@ class CulliganApi:
         self._ayla_access_token     = login_result["data"]["linkedAccounts"]["ayla"]["access_token"]
         self._ayla_refresh_token    = login_result["data"]["linkedAccounts"]["ayla"]["refresh_token"]
         self._ayla_expiration       = datetime.now() + timedelta(seconds=login_result["data"]["linkedAccounts"]["ayla"]["expires_in"])
+        self._ayla_expiration_raw   = login_result["data"]["linkedAccounts"]["ayla"]["expires_in"]
 
         if status_code != 200:
             self._is_authed   = False
@@ -227,6 +239,17 @@ class CulliganApi:
         session = await self.ensure_session()
         headers = self._get_headers(kwargs)
         return session.request(http_method, url, headers=headers, **kwargs)
+
+    def get_ayla_api(self) -> AylaApi:
+        """ Get an instace of the  AylaApi object and force instantiate it with auth provided by Culligan """
+        AuthFromCulligan = {
+            "access_token": self._ayla_access_token,
+            "refresh_token": self._ayla_refresh_token,
+            "expires_in": self._ayla_expiration_raw
+        }
+        Ayla = AylaApi(self._email, self._password, self._app_id, None, self.websession, False)
+        Ayla._set_credentials(200, AuthFromCulligan)
+        return Ayla
 
     def get_user_profile(self) -> Dict[str, str]:
         """Get user profile synchronously"""
