@@ -1,4 +1,4 @@
-aiohttp>=3.8.1
-requests>=2.27.1
-ujson>=5.7.0
-ayla_iot_unofficial>=1.0.0
+aiohttp>=3.8.5
+requests>=2.31.0
+ujson>=5.8.0
+ayla_iot_unofficial>=1.0.2
