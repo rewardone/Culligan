@@ -96,6 +96,10 @@ class CulliganApi:
             raise CulliganAuthError(login_result["error"]["message"] + " (Confirm login information is correct)")
         elif status_code == 401:
             raise CulliganAuthError(login_result["error"]["message"])
+        elif status_code == 422:
+            raise CulliganAuthError(login_result["error"]["message"] + " (Confirm login information is correct, username should be an email address.)")
+        elif "data" not in login_result:
+            raise CulliganAuthError(login_result + "Something unexpected happened and there was no 'data' in the response.")
 
         self._culligan_username     = login_result["data"]["userId"]
         self._culligan_access_token = login_result["data"]["accessToken"]
