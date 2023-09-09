@@ -65,9 +65,6 @@ class CulliganApi:
         self.websession             = websession
         self.v1_url                 = CULLIGAN_IOT_URL
 
-        self.sign_in()
-        self.Ayla                   = self.get_ayla_api()
-
     async def ensure_session(self) -> ClientSession:
         """Ensure that we have an aiohttp ClientSession"""
         if self.websession is None:
