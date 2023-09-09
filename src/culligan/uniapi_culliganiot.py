@@ -62,6 +62,7 @@ class CulliganApi:
         self._ayla_expiration_raw   = None          # type: Optional[int]
         self._is_authed             = False         # type: bool
         self._app_id                = app_id
+        self.Ayla                   = None
         self.websession             = websession
         self.v1_url                 = CULLIGAN_IOT_URL
 
