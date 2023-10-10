@@ -71,6 +71,8 @@ USERNAME = 'me@email.com'
 PASSWORD = '$7r0nkP@s$w0rD'
 
 CulliganApi = new_culligan_api(username, password)
+CulliganApi.sign_in()
+CulliganApi.Ayla = CulliganApi.get_ayla_api()
 
 device_list = CulliganApi.Ayla.list_devices()
 devices = CulliganApi.Ayla.get_devices()
