@@ -110,7 +110,7 @@ class CulliganIoTSoftener(CulliganIoTDevice):
         self.is_online                  = bool(device_dct["status"]["connection"]["online"])
 
     @property
-    def model(self) -> Optional[str]:
+    def device_model_number(self) -> Optional[str]:
         return self._model
 
     @property
@@ -124,7 +124,3 @@ class CulliganIoTSoftener(CulliganIoTDevice):
     @property
     def region(self):
         return self._region
-    
-    
-
-    
