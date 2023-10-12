@@ -9,10 +9,11 @@ Others such as /devices.json only seem to work when obtaining the token through 
 """
 
 from aiohttp    import ClientSession             # async http
-from requests   import post, request, Response   # http request library
-from datetime   import datetime, timedelta       # datetime operations
-from typing     import Dict, List, Optional      # object types
 from ayla_iot_unofficial import AylaApi
+from .culliganiot_device import CulliganIoTDevice, CulliganIoTSoftener
+from datetime   import datetime, timedelta       # datetime operations
+from requests   import post, request, Response   # http request library
+from typing     import Dict, List, Optional      # object types
 
 try:
     from ujson   import loads
@@ -66,6 +67,13 @@ class CulliganApi:
         self.websession             = websession
         self.v1_url                 = CULLIGAN_IOT_URL
 
+        # identify serials and dsns to track
+        self.culligan_iot_serials   = []
+        self.ayla_networks_dsns     = None
+
+        # eventually combine them using Ayla 'softener' devices or other generic device class
+        # ayla Softener(Device) class updates differently ... maybe extend Device here in Culligan
+
     async def ensure_session(self) -> ClientSession:
         """Ensure that we have an aiohttp ClientSession"""
         if self.websession is None:
@@ -88,8 +96,11 @@ class CulliganApi:
     
     @property
     def _refresh_data(self) -> Dict:
-        """Payload for refresh token call"""
-        return {"refresh_token": self._culligan_refresh_token}
+        """Payload for refresh token call. Refresh tokens are currently long-lived and do not seem to change."""
+        return {
+            "refresh_token": self._culligan_refresh_token, 
+            "appId": CULLIGAN_APP_ID
+        }
 
     def _set_credentials(self, status_code: int, login_result: Dict):
         """Update the internal credentials store. This tracks current bearer token and data needed for token refresh."""
@@ -135,10 +146,9 @@ class CulliganApi:
 
     def refresh_auth(self):
         """Refresh the authentication synchronously using object tracked refresh token."""
-        """Placeholder until Culligan refresh is known."""
         refresh_data = self._refresh_data
-        #resp = post(f"{self.user_field_url:s}/users/refresh_token.json", json=refresh_data)
-        #self._set_credentials(resp.status_code, resp.json())
+        resp = post(f"{self.v1_url:s}/auth/login", json=refresh_data)
+        self._set_credentials(resp.status_code, resp.json())
 
     async def async_sign_in(self):
         """Authenticate to Culligan API asynchronously using a POST with credentials.."""
@@ -149,11 +159,10 @@ class CulliganApi:
 
     async def async_refresh_auth(self):
         """Refresh the authentication asynchronously using object tracked refresh token.."""
-        """Placeholder until Culligan refresh is known."""
         session = await self.ensure_session()
         refresh_data = self._refresh_data
-        #async with session.post(f"{self.v1_url:s}/auth/login", json=refresh_data) as resp:
-        #    self._set_credentials(resp.status, await resp.json())
+        async with session.post(f"{self.v1_url:s}/auth/login", json=refresh_data) as resp:
+            self._set_credentials(resp.status, await resp.json())
 
     def _clear_auth(self):
         """Clear authentication state"""
@@ -216,6 +225,11 @@ class CulliganApi:
     def auth_header(self) -> Dict[str, str]:
         self.check_auth()
         return {"Authorization": f"Bearer {self._culligan_access_token:s}"}
+    
+    @property
+    def no_cache_header(self) -> Dict[str, str]:
+        """If device/registry will be annoying later, can specify a force update using cache-control."""
+        return {"Cache-Control": "no-cache"}
 
     def _get_headers(self, fn_kwargs) -> Dict[str, str]:
         """
@@ -269,21 +283,21 @@ class CulliganApi:
                 raise CulliganAuthError(response)
         return response
     
-    def get_device_registry(self) -> Dict[str, str]:
-        """Get device registry synchronously"""
-        resp = self.self_request("get", f"{self.v1_url:s}/device/registry")
-        response = resp.json()
-        if resp.status_code == 401:
-            raise CulliganAuthError(response)
-        return response
+    # def get_device_registry(self) -> Dict[str, str]:
+    #     """Get device registry synchronously"""
+    #     resp = self.self_request("get", f"{self.v1_url:s}/device/registry")
+    #     response = resp.json()
+    #     if resp.status_code == 401:
+    #         raise CulliganAuthError(response)
+    #     return response
     
-    async def async_get_device_registry(self) -> Dict[str, str]:
-        """Get device registry async"""
-        async with await self.async_request("get", f"{self.v1_url:s}/device/registry") as resp:
-            response = await resp.json()
-            if resp.status == 401:
-                raise CulliganAuthError(response)
-        return response
+    # async def async_get_device_registry(self) -> Dict[str, str]:
+    #     """Get device registry async"""
+    #     async with await self.async_request("get", f"{self.v1_url:s}/device/registry") as resp:
+    #         response = await resp.json()
+    #         if resp.status == 401:
+    #             raise CulliganAuthError(response)
+    #     return response
     
     def get_metadata_user(self) -> Dict[str, str]:
         """Get user metadata synchronously. This is the CWS onboarding survey results (house side, what's new, interests, etc)"""
@@ -301,4 +315,79 @@ class CulliganApi:
             if resp.status == 401:
                 raise CulliganAuthError(response)
         response["data"]["CWS-onboarding-survey"] = loads(response["data"]["CWS-onboarding-survey"])
+        return response
+    
+    def get_device_registry(self) -> Dict[str, str]:
+        """Get device registry synchronously"""
+        # returns data{devices[]}
+        # devices has: serialNumber, name, model, generation, protocolVersion, lat, lon, swVersion, status{connection{online, lastUpdate}}, region{code}
+        # metadata{}, registeredAt, createdAt, updatedAt, currentUserrole, dealerId, accountNumber, installationAddress{address, zip, city, state, country}
+        resp = self.self_request("get", f"{self.v1_url:s}/device/registry")
+        response = resp.json()
+        if resp.status_code == 401:
+            raise CulliganAuthError(response)
+        
+        # track serialNumbers for device/data endpoint
+        for device in response["data"]["devices"]:
+            if device["serialNumber"] not in self.culligan_iot_serials:
+                self.culligan_iot_serials.append(device["serialNumber"])
+
+        return response
+    
+    async def async_get_device_registry(self) -> Dict[str, str]:
+        """Get device registry async"""
+        async with await self.async_request("get", f"{self.v1_url:s}/device/registry") as resp:
+            response = await resp.json()
+            if resp.status == 401:
+                raise CulliganAuthError(response)
+            
+        # track serialNumbers for device/data endpoint
+        for device in response["data"]["devices"]:
+            if device["serialNumber"] not in self.culligan_iot_serials:
+                self.culligan_iot_serials.append(device["serialNumber"])
+
+        return response
+    
+    def get_devices(self) -> List[CulliganIoTDevice]:
+        """Retrieve a device object of devices. Ability to update with metadata. Synchronous."""
+        devices = list()
+        device_registry = self.get_device_registry()
+        for d in device_registry["data"]["devices"]:
+            # Have no idea what products will be enabled or how to identify them ... for now ... Smart HE is a softener
+            if   d["name"] in ["Smart HE"]:
+                devices.append(CulliganIoTSoftener(self, d))
+            # Everything else is a device
+            else:
+                devices.append(CulliganIoTDevice  (self, d))
+        return devices
+    
+    async def async_get_devices(self) -> List[CulliganIoTDevice]:
+        """Retrieve a device object of devices. Ability to update with metadata. Asynchronous."""
+        devices = list()
+        device_registry = await self.async_get_device_registry()
+        for d in device_registry["data"]["devices"]:
+            # Have no idea what products will be enabled or how to identify them ... for now ... Smart HE is a softener
+            if   d["name"] in ["Smart HE"]:
+                devices.append(CulliganIoTSoftener(self, d))
+            # Everything else is a device
+            else:
+                devices.append(CulliganIoTDevice  (self, d))
+        return devices
+
+    def get_device_data(self, serialNumber: str) -> Dict[str, str]:
+        """Get device registry synchronously"""
+        # most ayla properties in [data][datapoints]
+        resp = self.self_request("get", f"{self.v1_url:s}/device/data?serialNumber={serialNumber:s}")
+        response = resp.json()
+        if resp.status_code == 401:
+            raise CulliganAuthError(response)
+        return response
+    
+    async def async_get_device_data(self, serialNumber: str) -> Dict[str, str]:
+        """Get device registry async"""
+        # most ayla properties in [data][datapoints]
+        async with await self.async_request("get", f"{self.v1_url:s}/device/data?serialNumber={serialNumber:s}") as resp:
+            response = await resp.json()
+            if resp.status == 401:
+                raise CulliganAuthError(response)
         return response
