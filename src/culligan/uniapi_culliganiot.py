@@ -12,7 +12,7 @@ from aiohttp    import ClientSession             # async http
 from ayla_iot_unofficial import AylaApi
 from .culliganiot_device import CulliganIoTDevice, CulliganIoTSoftener
 from datetime   import datetime, timedelta       # datetime operations
-from requests   import post, request, Response   # http request library
+from requests   import post, put, request, Response   # http request library
 from typing     import Dict, List, Optional      # object types
 
 try:
@@ -147,7 +147,7 @@ class CulliganApi:
     def refresh_auth(self):
         """Refresh the authentication synchronously using object tracked refresh token."""
         refresh_data = self._refresh_data
-        resp = post(f"{self.v1_url:s}/auth/login", json=refresh_data)
+        resp = put(f"{self.v1_url:s}/auth/login", json=refresh_data)
         self._set_credentials(resp.status_code, resp.json())
 
     async def async_sign_in(self):
@@ -161,7 +161,7 @@ class CulliganApi:
         """Refresh the authentication asynchronously using object tracked refresh token.."""
         session = await self.ensure_session()
         refresh_data = self._refresh_data
-        async with session.post(f"{self.v1_url:s}/auth/login", json=refresh_data) as resp:
+        async with session.put(f"{self.v1_url:s}/auth/login", json=refresh_data) as resp:
             self._set_credentials(resp.status, await resp.json())
 
     def _clear_auth(self):
