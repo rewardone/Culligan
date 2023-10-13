@@ -98,7 +98,7 @@ class CulliganApi:
     def _refresh_data(self) -> Dict:
         """Payload for refresh token call. Refresh tokens are currently long-lived and do not seem to change."""
         return {
-            "refresh_token": self._culligan_refresh_token, 
+            "refreshToken": self._culligan_refresh_token, 
             "appId": CULLIGAN_APP_ID
         }
 
@@ -282,22 +282,6 @@ class CulliganApi:
             if resp.status == 401:
                 raise CulliganAuthError(response)
         return response
-    
-    # def get_device_registry(self) -> Dict[str, str]:
-    #     """Get device registry synchronously"""
-    #     resp = self.self_request("get", f"{self.v1_url:s}/device/registry")
-    #     response = resp.json()
-    #     if resp.status_code == 401:
-    #         raise CulliganAuthError(response)
-    #     return response
-    
-    # async def async_get_device_registry(self) -> Dict[str, str]:
-    #     """Get device registry async"""
-    #     async with await self.async_request("get", f"{self.v1_url:s}/device/registry") as resp:
-    #         response = await resp.json()
-    #         if resp.status == 401:
-    #             raise CulliganAuthError(response)
-    #     return response
     
     def get_metadata_user(self) -> Dict[str, str]:
         """Get user metadata synchronously. This is the CWS onboarding survey results (house side, what's new, interests, etc)"""
