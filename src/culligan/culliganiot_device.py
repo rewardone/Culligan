@@ -24,6 +24,7 @@ class CulliganIoTDevice:
         self.culligan_api           = culligan_api
 
         self.properties             = {}
+        self._commands              = []
 
         # Properties
         self._name                  = device_dct['name']
@@ -37,6 +38,32 @@ class CulliganIoTDevice:
     @property
     def name(self):
         return self._name
+    
+    @property
+    def command_endpoint(self) -> str:
+        """The endpoint which processes action commands"""
+        return f"{CULLIGAN_IOT_URL:s}/device/command"
+    
+    def set_command_payload(self, command: str, active: Optional[bool], duration: Optional[int]=60) -> dict:
+        """"""
+        if command in self._commands:
+            payload = {
+                "command": command,
+                "serialNumber": self.device_serial_number,
+                "protocolVersion": 1
+            }
+
+            # only telemetry doesn't need params
+            # otherwise it needs active: 0 or active 1
+            if command != "telemetry.get":
+                payload["params"] = {
+                    "active": int(active)
+                }
+
+                if command == "bypass.timed.on":
+                    payload["params"]["duration"] = duration
+
+            return payload
     
     @property
     def all_properties_endpoint(self) -> str:
@@ -109,6 +136,8 @@ class CulliganIoTSoftener(CulliganIoTDevice):
 
         self.is_online                  = bool(device_dct["status"]["connection"]["online"])
 
+        self._commands                  = ["telemetry.get", "awayMode.set","bypass.timed.on","bypass.permanent.on","bypass.off"]
+
     @property
     def device_model_number(self) -> Optional[str]:
         return self._model
@@ -124,3 +153,111 @@ class CulliganIoTSoftener(CulliganIoTDevice):
     @property
     def region(self):
         return self._region
+    
+    def get_telemetry(self):
+        """Send telemetry command"""
+        resp = self.culligan_api.self_request('post', self.command_endpoint, json=self.set_command_payload("telemetry.get", True))
+        json = resp.json()
+        if json["success"] == True:
+            return True
+        else:
+            return False
+        
+    async def async_get_telemetry(self):
+        """Send telemetry command"""
+        resp = await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("telemetry.get", True))
+        json = await resp.json()
+        if json["success"] == True:
+            return True
+        else:
+            return False
+        
+    def start_vacation_mode(self):
+        """Send telemetry command"""
+        resp = self.culligan_api.self_request('post', self.command_endpoint, json=self.set_command_payload("awayMode.set", True))
+        json = resp.json()
+        if json["success"] == True:
+            return True
+        else:
+            return False
+        
+    async def async_start_vacation_mode(self):
+        """Send telemetry command"""
+        resp = await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("awayMode.set", True))
+        json = await resp.json()
+        if json["success"] == True:
+            return True
+        else:
+            return False
+        
+    def stop_vacation_mode(self):
+        """Send telemetry command"""
+        resp = self.culligan_api.self_request('post', self.command_endpoint, json=self.set_command_payload("awayMode.set", False))
+        json = resp.json()
+        if json["success"] == True:
+            return True
+        else:
+            return False
+        
+    async def async_stop_vacation_mode(self):
+        """Send telemetry command"""
+        resp = await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("awayMode.set", False))
+        json = await resp.json()
+        if json["success"] == True:
+            return True
+        else:
+            return False
+    
+    def start_bypass_mode(self):
+        """Send telemetry command"""
+        resp = self.culligan_api.self_request('post', self.command_endpoint, json=self.set_command_payload("bypass.permanent.on", True))
+        json = resp.json()
+        if json["success"] == True:
+            return True
+        else:
+            return False
+        
+    async def async_start_bypass_mode(self):
+        """Send telemetry command"""
+        resp = await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("bypass.permanent.on", True))
+        json = await resp.json()
+        if json["success"] == True:
+            return True
+        else:
+            return False
+        
+    def start_bypass_timed_mode(self, duration: int=60):
+        """Send telemetry command"""
+        resp = self.culligan_api.self_request('post', self.command_endpoint, json=self.set_command_payload("bypass.timed.on", True, duration))
+        json = resp.json()
+        if json["success"] == True:
+            return True
+        else:
+            return False
+        
+    async def async_start_bypass_timed_mode(self, duration: int=60):
+        """Send telemetry command"""
+        resp = await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("bypass.permanent.on", True, duration))
+        json = await resp.json()
+        if json["success"] == True:
+            return True
+        else:
+            return False
+        
+    def stop_bypass_mode(self):
+        """Send telemetry command"""
+        resp = self.culligan_api.self_request('post', self.command_endpoint, json=self.set_command_payload("bypass.off", True))
+        json = resp.json()
+        if json["success"] == True:
+            return True
+        else:
+            return False
+        
+    async def async_stop_bypass_mode(self):
+        """Send telemetry command"""
+        resp = await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("bypass.off", True))
+        json = await resp.json()
+        if json["success"] == True:
+            return True
+        else:
+            return False
