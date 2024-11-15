@@ -117,10 +117,13 @@ class CulliganApi:
         self._culligan_access_token = login_result["data"]["accessToken"]
         self._culligan_refresh_token= login_result["data"]["refreshToken"]
         self._culligan_expiration   = datetime.now() + timedelta(seconds=login_result["data"]["expiresIn"])
-        self._ayla_access_token     = login_result["data"]["linkedAccounts"]["ayla"]["access_token"]
-        self._ayla_refresh_token    = login_result["data"]["linkedAccounts"]["ayla"]["refresh_token"]
-        self._ayla_expiration       = datetime.now() + timedelta(seconds=login_result["data"]["linkedAccounts"]["ayla"]["expires_in"])
-        self._ayla_expiration_raw   = login_result["data"]["linkedAccounts"]["ayla"]["expires_in"]
+
+        # Ayla tokens are not guaranteed to exist ... 
+        if "ayla" in login_result["data"]["linkedAccounts"]:
+            self._ayla_access_token     = login_result["data"]["linkedAccounts"]["ayla"]["access_token"]
+            self._ayla_refresh_token    = login_result["data"]["linkedAccounts"]["ayla"]["refresh_token"]
+            self._ayla_expiration       = datetime.now() + timedelta(seconds=login_result["data"]["linkedAccounts"]["ayla"]["expires_in"])
+            self._ayla_expiration_raw   = login_result["data"]["linkedAccounts"]["ayla"]["expires_in"]
 
         if status_code != 200:
             self._is_authed   = False
@@ -257,15 +260,20 @@ class CulliganApi:
         return session.request(http_method, url, headers=headers, **kwargs)
 
     def get_ayla_api(self) -> AylaApi:
-        """ Get an instace of the  AylaApi object and force instantiate it with auth provided by Culligan """
+        """ Get an instace of the AylaApi object and force instantiate it with auth provided by Culligan """
         AuthFromCulligan = {
             "access_token": self._ayla_access_token,
             "refresh_token": self._ayla_refresh_token,
             "expires_in": self._ayla_expiration_raw
         }
-        Ayla = AylaApi(self._email, self._password, self._app_id, None, self.websession, False)
-        Ayla._set_credentials(200, AuthFromCulligan)
-        return Ayla
+
+        # Check for data or set to false ... Ayla not guaranteed to be a linked account
+        if AuthFromCulligan["access_token"]:
+            Ayla = AylaApi(self._email, self._password, self._app_id, None, self.websession, False)
+            Ayla._set_credentials(200, AuthFromCulligan)
+            return Ayla
+        else:
+            return False
 
     def get_user_profile(self) -> Dict[str, str]:
         """Get user profile synchronously"""
