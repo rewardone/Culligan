@@ -29,10 +29,17 @@ class CulliganIoTDevice:
         # Properties
         self._name                  = device_dct['name']
         self._device_serial_number  = device_dct["serialNumber"]
+        
+        # provide _dsn to prevent refactoring of upstream code in Culligan Integration
+        self._dsn                   = self._device_serial_number
         self._error                 = None
 
     @property
     def device_serial_number(self) -> Optional[str]:
+        return self._device_serial_number
+
+    @property
+    def dsn(self) -> Optional[str]:
         return self._device_serial_number
 
     @property
