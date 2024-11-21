@@ -346,7 +346,7 @@ class CulliganApi:
         device_registry = self.get_device_registry()
         for d in device_registry["data"]["devices"]:
             # Have no idea what products will be enabled or how to identify them ... for now ... Smart HE is a softener
-            if   d["name"] in ["Smart HE"]:
+            if   d["name"] in ["Smart HE","Smart Modernity"]:
                 devices.append(CulliganIoTSoftener(self, d))
             # Everything else is a device
             else:
@@ -359,7 +359,7 @@ class CulliganApi:
         device_registry = await self.async_get_device_registry()
         for d in device_registry["data"]["devices"]:
             # Have no idea what products will be enabled or how to identify them ... for now ... Smart HE is a softener
-            if   d["name"] in ["Smart HE"]:
+            if   d["name"] in ["Smart HE","Smart Modernity"]:
                 devices.append(CulliganIoTSoftener(self, d))
             # Everything else is a device
             else:
