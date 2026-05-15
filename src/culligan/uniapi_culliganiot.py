@@ -10,7 +10,7 @@ Others such as /devices.json only seem to work when obtaining the token through 
 
 from aiohttp    import ClientSession             # async http
 from ayla_iot_unofficial import AylaApi
-from .culliganiot_device import CulliganIoTDevice, CulliganIoTSoftener
+from .culliganiot_device import CulliganIoTDevice, CulliganIoTRO, CulliganIoTSoftener
 from datetime   import datetime, timedelta       # datetime operations
 from requests   import post, put, request, Response   # http request library
 from typing     import Dict, List, Optional      # object types
@@ -36,6 +36,31 @@ from .exc import (
 )
 
 _session = None
+
+
+def is_culligan_iot_ro(device: Dict) -> bool:
+    """Return true when a CulliganIoT registry device is a Smart RO device."""
+    name = str(device.get("name", "")).casefold()
+    model = str(device.get("model", "")).casefold()
+    serial_number = str(device.get("serialNumber", "")).casefold()
+    return (
+        "smart ro" in name
+        or "reverse osmosis" in name
+        or model.startswith("sro")
+        or serial_number.startswith("sro")
+    )
+
+
+def culligan_iot_device_from_registry(api: "CulliganApi", device: Dict) -> CulliganIoTDevice:
+    """Build the most specific CulliganIoT device class known for a registry device."""
+    # Have no idea what products will be enabled or how to identify them ... for now ... Smart HE is a softener
+    if device["name"] in ["Smart HE", "Smart Modernity"]:
+        return CulliganIoTSoftener(api, device)
+    if is_culligan_iot_ro(device):
+        return CulliganIoTRO(api, device)
+    # Everything else is a device
+    return CulliganIoTDevice(api, device)
+
 
 def new_culligan_api(username: str, password: str, app_id: str = CULLIGAN_APP_ID, websession: Optional[ClientSession] = None):
     """Get an CulliganApi object. Username is an email address."""
@@ -345,12 +370,7 @@ class CulliganApi:
         devices = list()
         device_registry = self.get_device_registry()
         for d in device_registry["data"]["devices"]:
-            # Have no idea what products will be enabled or how to identify them ... for now ... Smart HE is a softener
-            if   d["name"] in ["Smart HE","Smart Modernity"]:
-                devices.append(CulliganIoTSoftener(self, d))
-            # Everything else is a device
-            else:
-                devices.append(CulliganIoTDevice  (self, d))
+            devices.append(culligan_iot_device_from_registry(self, d))
         return devices
     
     async def async_get_devices(self) -> List[CulliganIoTDevice]:
@@ -358,12 +378,7 @@ class CulliganApi:
         devices = list()
         device_registry = await self.async_get_device_registry()
         for d in device_registry["data"]["devices"]:
-            # Have no idea what products will be enabled or how to identify them ... for now ... Smart HE is a softener
-            if   d["name"] in ["Smart HE","Smart Modernity"]:
-                devices.append(CulliganIoTSoftener(self, d))
-            # Everything else is a device
-            else:
-                devices.append(CulliganIoTDevice  (self, d))
+            devices.append(culligan_iot_device_from_registry(self, d))
         return devices
 
     def get_device_data(self, serialNumber: str) -> Dict[str, str]:

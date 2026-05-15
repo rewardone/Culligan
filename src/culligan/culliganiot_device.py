@@ -29,7 +29,7 @@ class CulliganIoTDevice:
         # Properties
         self._name                  = device_dct['name']
         self._device_serial_number  = device_dct["serialNumber"]
-        
+
         # provide _dsn to prevent refactoring of upstream code in Culligan Integration
         self._dsn                   = self._device_serial_number
         self._error                 = None
@@ -45,12 +45,12 @@ class CulliganIoTDevice:
     @property
     def name(self):
         return self._name
-    
+
     @property
     def command_endpoint(self) -> str:
         """The endpoint which processes action commands"""
         return f"{CULLIGAN_IOT_URL:s}/device/command"
-    
+
     def set_command_payload(self, command: str, active: Optional[bool], duration: Optional[int]=60) -> dict:
         """"""
         if command in self._commands:
@@ -71,7 +71,7 @@ class CulliganIoTDevice:
                     payload["params"]["duration"] = duration
 
             return payload
-    
+
     @property
     def all_properties_endpoint(self) -> str:
         """
@@ -79,7 +79,7 @@ class CulliganIoTDevice:
             This API retrieves all the properties for a specified device serial number (DSN).
         """
         return f'{CULLIGAN_IOT_URL}/device/data?serialNumber={self.device_serial_number}'
-    
+
     def get_property_value(self, property_name: PropertyName) -> Any:
         """Get the value of a property from the properties dictionary"""
         if isinstance(property_name, Enum):
@@ -93,7 +93,7 @@ class CulliganIoTDevice:
 
         resp = self.culligan_api.self_request('get', self.all_properties_endpoint, params=None)
         properties = resp.json()
-        
+
         return self._do_update(full_update, properties)
 
     async def async_update(self, property_list: Optional[Iterable[str]] = None):
@@ -129,7 +129,41 @@ class CulliganIoTDevice:
 
         return True
 
-    
+
+class CulliganIoTRO(CulliganIoTDevice):
+    """Read-only Smart RO / reverse-osmosis device entity."""
+
+    def __init__(self, culligan_api: "CulliganApi", device_dct: Dict):
+        super().__init__(culligan_api, device_dct)
+
+        self._model                     = device_dct.get("model")
+        self._generation                = device_dct.get("generation")
+        self._software_version          = device_dct.get("swVersion")
+        self._region                    = device_dct.get("region", {}).get("code")
+
+        self.is_online                  = bool(device_dct.get("status", {}).get("connection", {}).get("online"))
+
+        # Command semantics for RO devices are not defined yet. Keep this class
+        # intentionally read-only until the cloud API surface is understood.
+        self._commands                  = []
+
+    @property
+    def device_model_number(self) -> Optional[str]:
+        return self._model
+
+    @property
+    def generation(self):
+        return self._generation
+
+    @property
+    def software_version(self):
+        return self._software_version
+
+    @property
+    def region(self):
+        return self._region
+
+
 class CulliganIoTSoftener(CulliganIoTDevice):
     """ Extend device into a water softener specific device """
 
@@ -152,15 +186,15 @@ class CulliganIoTSoftener(CulliganIoTDevice):
     @property
     def generation(self):
         return self._generation
-    
+
     @property
     def software_version(self):
         return self._software_version
-    
+
     @property
     def region(self):
         return self._region
-    
+
     def get_telemetry(self):
         """Send telemetry command"""
         resp = self.culligan_api.self_request('post', self.command_endpoint, json=self.set_command_payload("telemetry.get", True))
@@ -169,7 +203,7 @@ class CulliganIoTSoftener(CulliganIoTDevice):
             return True
         else:
             return False
-        
+
     async def async_get_telemetry(self):
         """Send telemetry command"""
         resp = await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("telemetry.get", True))
@@ -178,7 +212,7 @@ class CulliganIoTSoftener(CulliganIoTDevice):
             return True
         else:
             return False
-        
+
     def start_vacation_mode(self):
         """Send telemetry command"""
         resp = self.culligan_api.self_request('post', self.command_endpoint, json=self.set_command_payload("awayMode.set", True))
@@ -187,7 +221,7 @@ class CulliganIoTSoftener(CulliganIoTDevice):
             return True
         else:
             return False
-        
+
     async def async_start_vacation_mode(self):
         """Send telemetry command"""
         resp = await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("awayMode.set", True))
@@ -196,7 +230,7 @@ class CulliganIoTSoftener(CulliganIoTDevice):
             return True
         else:
             return False
-        
+
     def stop_vacation_mode(self):
         """Send telemetry command"""
         resp = self.culligan_api.self_request('post', self.command_endpoint, json=self.set_command_payload("awayMode.set", False))
@@ -205,7 +239,7 @@ class CulliganIoTSoftener(CulliganIoTDevice):
             return True
         else:
             return False
-        
+
     async def async_stop_vacation_mode(self):
         """Send telemetry command"""
         resp = await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("awayMode.set", False))
@@ -214,7 +248,7 @@ class CulliganIoTSoftener(CulliganIoTDevice):
             return True
         else:
             return False
-    
+
     def start_bypass_mode(self):
         """Send telemetry command"""
         resp = self.culligan_api.self_request('post', self.command_endpoint, json=self.set_command_payload("bypass.permanent.on", True))
@@ -223,7 +257,7 @@ class CulliganIoTSoftener(CulliganIoTDevice):
             return True
         else:
             return False
-        
+
     async def async_start_bypass_mode(self):
         """Send telemetry command"""
         resp = await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("bypass.permanent.on", True))
@@ -232,7 +266,7 @@ class CulliganIoTSoftener(CulliganIoTDevice):
             return True
         else:
             return False
-        
+
     def start_bypass_timed_mode(self, duration: int=60):
         """Send telemetry command"""
         resp = self.culligan_api.self_request('post', self.command_endpoint, json=self.set_command_payload("bypass.timed.on", True, duration))
@@ -241,7 +275,7 @@ class CulliganIoTSoftener(CulliganIoTDevice):
             return True
         else:
             return False
-        
+
     async def async_start_bypass_timed_mode(self, duration: int=60):
         """Send telemetry command"""
         resp = await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("bypass.permanent.on", True, duration))
@@ -250,7 +284,7 @@ class CulliganIoTSoftener(CulliganIoTDevice):
             return True
         else:
             return False
-        
+
     def stop_bypass_mode(self):
         """Send telemetry command"""
         resp = self.culligan_api.self_request('post', self.command_endpoint, json=self.set_command_payload("bypass.off", True))
@@ -259,7 +293,7 @@ class CulliganIoTSoftener(CulliganIoTDevice):
             return True
         else:
             return False
-        
+
     async def async_stop_bypass_mode(self):
         """Send telemetry command"""
         resp = await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("bypass.off", True))
