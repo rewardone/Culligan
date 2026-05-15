@@ -130,6 +130,40 @@ class CulliganIoTDevice:
         return True
 
     
+class CulliganIoTRO(CulliganIoTDevice):
+    """Read-only Smart RO / reverse-osmosis device entity."""
+
+    def __init__(self, culligan_api: "CulliganApi", device_dct: Dict):
+        super().__init__(culligan_api, device_dct)
+
+        self._model                     = device_dct.get("model")
+        self._generation                = device_dct.get("generation")
+        self._software_version          = device_dct.get("swVersion")
+        self._region                    = device_dct.get("region", {}).get("code")
+
+        self.is_online                  = bool(device_dct.get("status", {}).get("connection", {}).get("online"))
+
+        # Command semantics for RO devices are not defined yet. Keep this class
+        # intentionally read-only until the cloud API surface is understood.
+        self._commands                  = []
+
+    @property
+    def device_model_number(self) -> Optional[str]:
+        return self._model
+
+    @property
+    def generation(self):
+        return self._generation
+    
+    @property
+    def software_version(self):
+        return self._software_version
+    
+    @property
+    def region(self):
+        return self._region
+    
+
 class CulliganIoTSoftener(CulliganIoTDevice):
     """ Extend device into a water softener specific device """
 
