@@ -206,12 +206,12 @@ class CulliganIoTSoftener(CulliganIoTDevice):
 
     async def async_get_telemetry(self):
         """Send telemetry command"""
-        resp = await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("telemetry.get", True))
+        async with await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("telemetry.get", True)) as resp:
         json = await resp.json()
-        if json["success"] == True:
-            return True
-        else:
-            return False
+            if json.get("success") == True:
+                return True
+            else:
+                return False
 
     def start_vacation_mode(self):
         """Send telemetry command"""
@@ -224,12 +224,12 @@ class CulliganIoTSoftener(CulliganIoTDevice):
 
     async def async_start_vacation_mode(self):
         """Send telemetry command"""
-        resp = await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("awayMode.set", True))
-        json = await resp.json()
-        if json["success"] == True:
-            return True
-        else:
-            return False
+        async with await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("awayMode.set", True)) as resp:
+            json = await resp.json()
+            if json.get("success") == True:
+                return True
+            else:
+                return False
 
     def stop_vacation_mode(self):
         """Send telemetry command"""
@@ -242,12 +242,12 @@ class CulliganIoTSoftener(CulliganIoTDevice):
 
     async def async_stop_vacation_mode(self):
         """Send telemetry command"""
-        resp = await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("awayMode.set", False))
-        json = await resp.json()
-        if json["success"] == True:
-            return True
-        else:
-            return False
+        async with await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("awayMode.set", False)) as resp:
+            json = await resp.json()
+            if json.get("success") == True:
+                return True
+            else:
+                return False
 
     def start_bypass_mode(self):
         """Send telemetry command"""
@@ -260,12 +260,12 @@ class CulliganIoTSoftener(CulliganIoTDevice):
 
     async def async_start_bypass_mode(self):
         """Send telemetry command"""
-        resp = await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("bypass.permanent.on", True))
-        json = await resp.json()
-        if json["success"] == True:
-            return True
-        else:
-            return False
+        async with await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("bypass.permanent.on", True)) as resp:
+            json = await resp.json()
+            if json.get("success") == True:
+                return True
+            else:
+                return False
 
     def start_bypass_timed_mode(self, duration: int=60):
         """Send telemetry command"""
@@ -278,12 +278,12 @@ class CulliganIoTSoftener(CulliganIoTDevice):
 
     async def async_start_bypass_timed_mode(self, duration: int=60):
         """Send telemetry command"""
-        resp = await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("bypass.permanent.on", True, duration))
-        json = await resp.json()
-        if json["success"] == True:
-            return True
-        else:
-            return False
+        async with await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("bypass.permanent.on", True, duration)) as resp:
+            json = await resp.json()
+            if json.get("success") == True:
+                return True
+            else:
+                return False
 
     def stop_bypass_mode(self):
         """Send telemetry command"""
@@ -296,9 +296,9 @@ class CulliganIoTSoftener(CulliganIoTDevice):
 
     async def async_stop_bypass_mode(self):
         """Send telemetry command"""
-        resp = await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("bypass.off", True))
-        json = await resp.json()
-        if json["success"] == True:
-            return True
-        else:
-            return False
+        async with await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("bypass.off", True)) as resp:
+            json = await resp.json()
+            if json.get("success") == True:
+                return True
+            else:
+                return False
