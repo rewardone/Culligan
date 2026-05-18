@@ -207,7 +207,7 @@ class CulliganIoTSoftener(CulliganIoTDevice):
     async def async_get_telemetry(self):
         """Send telemetry command"""
         async with await self.culligan_api.async_request('post', self.command_endpoint, json=self.set_command_payload("telemetry.get", True)) as resp:
-        json = await resp.json()
+            json = await resp.json()
             if json.get("success") == True:
                 return True
             else:
